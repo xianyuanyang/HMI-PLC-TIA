@@ -1,0 +1,13 @@
+# 第三方 MCP 工具（体积大且为第三方交付物，未纳入仓库）
+TIA_MCP_v2711/
+tia-portal-openness-mcp/
+openness_lib/
+*.zip
+
+# 工程数据与日志（含私有工程细节，勿上传）
+*.aml
+*.ap21
+*.log
+diag/
+__pycache__/
+prepare.py
