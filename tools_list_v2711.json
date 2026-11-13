@@ -1,0 +1,1805 @@
+[
+ {
+  "name": "DeletePlcTagTable",
+  "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC tag table (variable table / tag list) by name, including tables nested in user groups. Defaults to dryRun=true, which only reports what the table contains and deletes nothing. DANGER: deleting a tag table removes the SYMBOLS of every tag in it. HMI panels bind PLC tags by symbolic name, so the PLC may still compile clean while the HMI silently loses its bindings - always review the previewed tag list and cross references first. The default tag table (IsDefault) is refused. Cross references are attempted but may be unavailable at tag-table level; the response says explicitly whether they were obtained. Regex and wildcards are rejected. Back up first with ExportPlcTagTable.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "tagTableName": {
+     "description": "tagTableName: bare table name, or the group-qualified path from GetPlcTagTables (e.g. 'Drives/VFD tags'). Regex and wildcards are rejected.",
+     "type": "string"
+    },
+    "dryRun": {
+     "description": "dryRun: true (default) only resolves the table and lists its contents; false performs Delete() and verifies the table is absent",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "softwarePath",
+    "tagTableName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetBlocksWithHierarchy",
+  "description": "[L2][PLC-Software]Get a list of all blocks with their group hierarchy from the plc software, including the blocks inside software units: they appear under a top-level group 'Software units' with one group per unit, so a block path reads 'Software units/<unit>/<group>/<block>' (the form ExportBlock / GetBlockInfo accept). meta.scope says what was covered; meta.complete=false when the software units could not be read.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "EnsureOpennessUserGroup",
+  "description": "[L1][Portal]Ensure current Windows user is in TIA Openness user group (may prompt UI). Returns success=true when membership is OK.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetAuthoringGuide",
+  "description": "[L0][Guide] Verified syntax + workflow cheat sheet for authoring TIA content through this server. CALL THIS BEFORE writing any SCL/LAD/DB/HMI content — it prevents the common encoding, syntax and tool-routing mistakes. Topics: workflow, scl, lad, db, hmi, errors. Read-only, does not touch TIA Portal.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "topic": {
+     "description": "topic: one of workflow | scl | lad | db | hmi | errors",
+     "type": "string"
+    }
+   },
+   "required": [
+    "topic"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "OpenProject",
+  "description": "[L1][Project] Open a local TIA Portal project (.apXX) or multi-user session (.alsXX) file, where XX is the TIA version number (e.g. .ap21, .als21). Requires: Connect. Closes any currently open project first. After success, call GetProjectTree to explore its structure.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "path": {
+     "description": "path: defines the path where to the project/session",
+     "type": "string"
+    },
+    "closeForeignProject": {
+     "description": "closeForeignProject: DEFAULT false. If TIA already has a project open that this session did not open, the call is REFUSED rather than closing the user's work. Only pass true after the user has agreed to close it.",
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "path"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetBlocks",
+  "description": "[L2][PLC-Software] Get a flat list of all blocks in PLC software. Requires: Connect + OpenProject. Use GetBlocksWithHierarchy instead when you need group/folder paths for ExportBlock. Returns: block name, number, type (OB/FC/FB/GlobalDB/InstanceDB), programming language.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "regexName": {
+     "description": "regexName: defines the name or regular expression to find the block. Use empty string (default) to find all",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "CloseProject",
+  "description": "[L1][Project] Close the currently open project or multi-user session. Requires: Connect + OpenProject. Any unsaved changes are lost — call SaveProject first. After closing, the connection remains active but no project is open. A project this session did not open (the user's own, attached from a running TIA Portal) is NOT closed unless closeForeignProject=true.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "closeForeignProject": {
+     "description": "closeForeignProject: DEFAULT false. If the open project belongs to the user (this session did not open it), the call is REFUSED rather than closing their work. Only pass true after the user has agreed to close it.",
+     "type": "boolean",
+     "default": false
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DeletePlcExternalSource",
+  "description": "[L2][PLC-Software]Delete a PLC external source by name so ImportPlcExternalSource can replace it (idempotent). Name may include or omit .scl.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software",
+     "type": "string"
+    },
+    "externalSourceName": {
+     "description": "externalSourceName: name from GetPlcExternalSources (e.g. MCPVerify_FC_SCL_v3.scl)",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "externalSourceName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetCrossReferences",
+  "description": "[L2][PLC-Software]Get cross references for a Step7 block/type (best-effort). Requires applicable object and Openness support.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software",
+     "type": "string"
+    },
+    "objectPath": {
+     "description": "objectPath: blockPath or typePath inside the PLC software",
+     "type": "string"
+    },
+    "objectKind": {
+     "description": "objectKind: Block or Type",
+     "type": "string",
+     "default": "Block"
+    },
+    "filter": {
+     "description": "filter: CrossReferenceFilter enum name (e.g. AllObjects, ObjectsWithReferences, UnusedObjects)",
+     "type": "string",
+     "default": "AllObjects"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "objectPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "GetProjectTree",
+  "description": "[L1][Project] Get the full project device/software tree as ASCII art. Requires: Connect + OpenProject. ALWAYS call this first after opening a project to discover the exact softwarePath (e.g. 'PLC_1') and device paths needed by all other PLC/HMI/hardware tools. Returns device names, software nodes, and HMI nodes.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "Doctor",
+  "description": "[L0][Diagnostics] One-call environment doctor for non-experts. Checks TIA install, Openness group membership, and connection/project state, and returns a plain-language diagnosis with the exact fix per problem. When fix=true (default) it ENSURES Openness group membership (adds the current user; may prompt a Windows UAC dialog). Read-only apart from that one fix. Call this first when setup is failing or you are unsure the environment is ready.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "fix": {
+     "description": "fix: when true (default), ensure Openness group membership (adds user, may prompt UAC). false = read-only diagnosis, no prompt.",
+     "type": "boolean",
+     "default": true
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "Disconnect",
+  "description": "[L1][Portal] Disconnect from TIA Portal and release the Openness handle. Call after all project work is done. Any unsaved changes will be lost — call SaveProject first if needed.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetProject",
+  "description": "[L1][Project] List all open local projects and multi-user sessions with their attributes. Requires: Connect. Use this to confirm which project is active, or to find the project name for AttachToOpenProject.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "ImportType",
+  "description": "[L1][PLC-Software]Import a type from file into the plc software",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "groupPath": {
+     "description": "groupPath: defines the path in the project structure to the group, where to import the type",
+     "type": "string"
+    },
+    "importPath": {
+     "description": "importPath: defines the path of the xml file from where to import the type",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "groupPath",
+    "importPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "FindTools",
+  "description": "[L0][Meta] Search the FULL tool roster, including tools not listed in this session. By default the server lists only a core 'lite' roster so the tool list stays small and every host can load it; everything else is reached through this tool plus CallTool. USE THIS whenever the visible tools do not cover what you need, before concluding the server cannot do something. Search by capability words, not exact names: 'watch table', 'HMI screen', 'download', 'cross reference', 'GSD'. Returns each match's exact name, parameter signature with defaults, and full description; then invoke it with CallTool.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "description": "query: space-separated words matched against tool names and descriptions, e.g. 'export watch table'. Empty lists the whole roster.",
+     "type": "string",
+     "default": ""
+    },
+    "limit": {
+     "description": "limit: max tools to return (default 12). Raise it for a broad survey.",
+     "type": "integer",
+     "default": 12
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "SearchHardwareCatalog",
+  "description": "[L1][Hardware]Search the installed TIA Portal hardware catalog for Siemens or third-party catalog entries by keyword, MLFB/order number, device family, or description. Use this before adding hardware when the exact TypeIdentifier is unknown, especially HMI panels such as KTP700 Basic.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "keyword": {
+     "description": "keyword: MLFB/order number/device/family text, e.g. 'KTP700', '6AV2123', '1211C DC/DC/DC', '6ES7211-1AE40'",
+     "type": "string"
+    },
+    "limit": {
+     "description": "limit: maximum candidates to return",
+     "type": "integer",
+     "default": 50
+    }
+   },
+   "required": [
+    "keyword"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "Connect",
+  "description": "[L1][Portal] Connect to a running TIA Portal instance or start a new one. MUST be the first tool called in every session. On success, state becomes Connected=true. If TIA Portal is not installed or the user is not in the 'Siemens TIA Openness' Windows group, this will fail — run EnsureOpennessUserGroup first.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GenerateErrorReport",
+  "description": "[L0][Reports]Generate a standardized Markdown/JSON error report. This is file/report generation only; it does not touch TIA Portal or modify projects.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "errorCode": {
+     "description": "Machine-readable error code, for example CompileError, HmiBindingError, TiaSessionContention, UnexpectedOpennessError.",
+     "type": "string"
+    },
+    "summary": {
+     "description": "Short human-readable summary.",
+     "type": "string"
+    },
+    "detail": {
+     "description": "Detailed error text, stack trace, compile message, or diagnostic context.",
+     "type": "string",
+     "default": ""
+    },
+    "recommendedNextActions": {
+     "description": "Comma-separated next actions.",
+     "type": "string",
+     "default": ""
+    },
+    "severity": {
+     "description": "Severity: info, warn, error, critical.",
+     "type": "string",
+     "default": "error"
+    },
+    "outputDirectory": {
+     "description": "Directory where the Markdown and JSON reports will be written. Empty means a temp directory under %TEMP%.",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "errorCode",
+    "summary"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "RunCapabilitySelfTest",
+  "description": "[L0][Diagnostics]Run a read-only MCP/TIA readiness self-test. It checks Openness group membership, connection state, visible portal processes, optional automation context, and optional project tree readback without writing to the project.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "connectIfNeeded": {
+     "description": "When true, call Connect before checks if the server is not connected. This is read-only but attaches to TIA Portal.",
+     "type": "boolean",
+     "default": false
+    },
+    "includeProjectTree": {
+     "description": "When true, include GetProjectTree output if a project is open.",
+     "type": "boolean",
+     "default": false
+    },
+    "inspectPortalProcesses": {
+     "description": "When true, enumerate TIA Portal process/project details. This may attach to running TIA processes and can be slow on a contended workstation.",
+     "type": "boolean",
+     "default": false
+    },
+    "expectedPlcSoftwarePath": {
+     "description": "Expected PLC software path for ValidateAutomationContext.",
+     "type": "string",
+     "default": "PLC_1"
+    },
+    "expectedHmiSoftwarePath": {
+     "description": "Expected HMI software path for ValidateAutomationContext.",
+     "type": "string",
+     "default": "HMI_RT_1"
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetExport",
+  "description": "[L1][Exports] Read one page of a large response that was parked under an export handle. When a tool's response exceeds the size limit the engine stores the full text and returns only its head plus an 'exportId'; call this with that id to read the rest. Page forward by passing the 'nextOffset' from the previous page until 'eof' is true. Each page is a raw CHARACTER SLICE of the original text — it can cut a line or a JSON value in half. Concatenate every page first, THEN parse; never parse a single page on its own. Handles live for 24 hours and only inside the current engine session.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "exportId": {
+     "description": "exportId: the handle from a truncated response, e.g. 'ex_20260902103000_0001'",
+     "type": "string"
+    },
+    "offset": {
+     "description": "offset: character index to start at; use the previous page's nextOffset. 0 = beginning",
+     "type": "integer",
+     "default": 0
+    },
+    "length": {
+     "description": "length: how many characters to return. 0 or omitted = this session's response limit.",
+     "type": "integer",
+     "default": 0
+    }
+   },
+   "required": [
+    "exportId"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "GetPlcTagTables",
+  "description": "[L2][PLC-Software] List all PLC tag table names, including the software units' tables as 'Software units/<unit>/<table>' (pass that path to ExportPlcTagTable; GetPlcTags softwareUnit reads one unit's tags). Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'PLC_1'). Use before ExportPlcTagTable to get exact table names, or before ImportPlcTagTable to check for conflicts.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "ImportFromDocuments",
+  "description": "[L2][PLC-Software] PREFERRED on V21+ for importing one block. Imports a single program block from SIMATIC SD textual / SCL documents (.s7dcl + .s7res) into PLC software. Requires TIA Portal V20 or newer. After import it reads back to confirm the block is present (Meta.verified).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "groupPath": {
+     "description": "groupPath: optional path within the PLC program where the block should be placed (empty for root)",
+     "type": "string"
+    },
+    "importPath": {
+     "description": "importPath: directory containing the document files (.s7dcl/.s7res)",
+     "type": "string"
+    },
+    "fileNameWithoutExtension": {
+     "description": "fileNameWithoutExtension: name of the block file without extension",
+     "type": "string"
+    },
+    "importOption": {
+     "description": "importOption: ImportDocumentOptions value (None, Override, SkipInactiveCultures, ActivateInactiveCultures)",
+     "type": "string",
+     "default": "Override"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "groupPath",
+    "importPath",
+    "fileNameWithoutExtension"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GoOffline",
+  "description": "[L1][Category:PLC-Online][PreCondition:Connect+OpenProject] Disconnect the online session between TIA Portal and the physical PLC. Safe to call even if not currently online. Always go offline when monitoring or download is complete.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path to the PLC software, e.g. 'PLC_1'",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": true,
+   "openWorldHint": true,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetBlockInfo",
+  "description": "[L2][PLC-Software] Get detailed info for one block (attributes, language, number, modification time). Requires: Connect + OpenProject. blockPath must be fully qualified: 'Group/Subgroup/BlockName' — get it from GetSoftwareTree or GetBlocksWithHierarchy. Returns: IsConsistent (false = must compile before export).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "blockPath": {
+     "description": "blockPath: defines the path in the project structure to the block",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "blockPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "GetState",
+  "description": "[L0][Portal] Get current connection state: IsConnected, open Project name, and open Session name. Use this to check preconditions before other tools — if IsConnected=false, call Connect first; if Project is empty, call OpenProject or CreateProject.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "GetDevices",
+  "description": "[L1][Hardware] List all hardware devices (PLCs, HMI panels, drives) in the project with their attributes. Requires: Connect + OpenProject. Prefer GetProjectTree for a visual overview; use this when you need the exact device Name and attribute values for subsequent operations like AddDevice or SetDeviceItemAttribute.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "GetSoftwareTree",
+  "description": "[L1][PLC-Software] Get the full PLC block/type/external-source hierarchy as ASCII tree. Requires: Connect + OpenProject. softwarePath from GetProjectTree (e.g. 'PLC_1'). ALWAYS call before ExportBlock/ImportBlock to get exact group paths (e.g. 'Program blocks/FBs/FB_Motor'). Returns OB/FB/FC/GlobalDB/UDT/ExternalSource blocks with group hierarchy.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "SaveProject",
+  "description": "[L1][Project] Save the currently open project or session to disk. Requires: Connect + OpenProject. Call after any significant change (device add, block import, HMI edit). Compile first if there are pending changes to ensure consistency.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "RunOnlineMonitoringSafetySelfTest",
+  "description": "[L0][Diagnostics]Run a static, read-only safety self-test for online monitoring guardrails. It does not connect to TIA Portal, open projects, modify watch tables, write PLC values, or expose forced-value operations.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "DeleteExport",
+  "description": "[L1][Exports] Drop one export handle once you are done with it. Optional — handles expire on their own after 24 hours and the oldest are evicted automatically when the store fills up.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "exportId": {
+     "description": "exportId: the handle to drop",
+     "type": "string"
+    }
+   },
+   "required": [
+    "exportId"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DeletePlcType",
+  "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC user data type (UDT / PlcType) by its exact path. Defaults to dryRun=true. Deleting a UDT breaks every DB and block interface declared with it, so the preview reports its cross references (GetCrossReferences works at type level) before you commit - review them first. Regex and wildcards are rejected. Export the type first with ExportType, and CompileSoftware afterwards.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "typePath": {
+     "description": "typePath: exact UDT path, e.g. 'UDT_Motor' or 'GroupA/UDT_Motor'. Regex and wildcards are rejected.",
+     "type": "string"
+    },
+    "dryRun": {
+     "description": "dryRun: true (default) only resolves the type and reports its cross references; false performs Delete() and verifies the type is absent",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "softwarePath",
+    "typePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GoOnline",
+  "description": "[L1][Category:PLC-Online][ONLINE-CONNECT][PreCondition:Connect+OpenProject] Establish an online connection from TIA Portal to the physical PLC. Required before DownloadToPlc to confirm reachability, or for future online monitoring tools. Returns State=Online on success. If ipAddress is omitted, uses the IP address configured in the project's hardware configuration. If ipAddress is provided, it selects which configured connection route to use (multi-NIC PCs, several target interfaces); Openness cannot connect to an address the project does not configure, so to reach a different IP change it in the hardware configuration first. Common failures: NotReachable (wrong IP / no cable), Protected (CPU requires authentication — supply password), Incompatible (firmware mismatch).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path to the PLC software, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "ipAddress": {
+     "description": "ipAddress: optional target IP address, e.g. '192.168.1.10', used to pick the matching configured route. Must be one of the addresses the project configures. Leave empty to use the default route.",
+     "type": "string",
+     "default": ""
+    },
+    "password": {
+     "description": "password: optional CPU access password. Required when the CPU has read/write protection configured. Leave empty for unprotected CPUs.",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": true,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ConnectIsolated",
+  "description": "[L1][Portal] Start a BRAND-NEW headless TIA Portal instance instead of attaching to a running one. It never attaches to, modifies or closes any TIA window or project the user already has open. USE THIS when the user is working in the TIA Portal UI: plain Connect attaches to their instance and OpenProject then (correctly) refuses to touch their project, so the whole server is unusable until they close it. Must be the FIRST connection tool in a fresh MCP process — calling it after another connection leaves an orphaned portal process that later attaches steal. Afterwards use OpenProject / CreateProject as usual, then CloseProject and Disconnect.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DeletePlcBlock",
+  "description": "[L2][PLC-Software][Destructive] Preview or delete exactly one PLC block by its exact path, including blocks inside nested groups. THIS IS ALSO THE TOOL FOR DELETING A DATA BLOCK: global DB, instance DB, ARRAY DB, FB, FC and OB are all PLC blocks, so there is no separate DeleteGlobalDb / DeleteDb / DeleteFunctionBlock tool - use this one. Defaults to dryRun=true, which changes nothing and reports the resolved target plus its cross references. It never deletes instance DBs or callers automatically. Before dryRun=false, review the previewed cross references (or run GetCrossReferences) and back the block up with ExportAsDocuments; compile with CompileSoftware after deletion and before SaveProject. Regex and wildcards are rejected. To delete a tag table use DeletePlcTagTable, a UDT use DeletePlcType.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "blockPath": {
+     "description": "blockPath: exact block path, e.g. 'DB_Test' or 'GroupA/FB_Motor'. Regex and wildcards are rejected.",
+     "type": "string"
+    },
+    "dryRun": {
+     "description": "dryRun: true (default) only resolves and reports the target; false performs Delete() and verifies the block is absent",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "softwarePath",
+    "blockPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GenerateBlocksFromExternalSource",
+  "description": "[L2][PLC-Software]Generate blocks from a PLC external source by name (best-effort)",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software",
+     "type": "string"
+    },
+    "externalSourceName": {
+     "description": "externalSourceName: name from GetPlcExternalSources",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "externalSourceName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ScaffoldProject",
+  "description": "[L1][Project] One-shot project generator: from a single JSON spec it creates the project, adds PLC (and optional Unified HMI) hardware, builds UDTs/global DBs/PLC tag tables, imports SCL external sources and LAD S7DCL documents, compiles, sets up the HMI connection/screens/tags, and saves — collapsing the ~20-step runbook into one call. Auto-connects if needed. Critical-step failures (connect/createProject/PLC device) abort; per-element failures are collected and reported. Spec keys: projectName(required); directoryPath?(default %TEMP%); plcName?(PLC_1); plcFamily?(S7-1500); plcMlfb?; hmiName?(omit to skip all HMI); hmiFamily?(WinCCUnifiedPC); hmiSoftwarePath?(HMI_RT_1); connectionName?(HMI_Connection_1); udt?/globalDb?/tagTable? = arrays of the same json objects PlcBuildAndImport accepts; sclSourceFiles? = array of .scl file paths; ladDocs? = array of {importPath,name}; hmiScreens? = array of {screenName,width,height,designJson(object)}; hmiTags? = array of {tagTableName?,tagName,hmiDataType?,plcTag?,address?}; compile?(true); save?(true). Returns a per-step report with compile error/warning counts. dryRun DEFAULTS TO TRUE (safety): the default call only validates the spec offline (PLC block JSON shapes, SCL/LAD file paths, designJson) WITHOUT connecting to TIA or creating anything; after a clean dry run, call again with dryRun=false to actually create the project.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "spec": {
+     "description": "spec: JSON object describing the project to generate. See tool description for keys.",
+     "type": "string"
+    },
+    "dryRun": {
+     "description": "dryRun: DEFAULT true — validates the spec offline (no TIA connection, nothing created). Pass dryRun=false explicitly to actually create the project (after a clean dry run).",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "spec"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ImportBlock",
+  "description": "[L1][PLC-Software] Import a single SimaticML XML block file into PLC software. Requires: Connect + OpenProject. importPath must be an absolute path to a .xml file. After import it reads back to confirm the block is present (Meta.verified); call CompileAndDiagnosePlc for full consistency. Pick the right tool: SCL/.s7dcl text → ImportFromDocuments; multiple XML files → ImportBlocksFromDirectory; a full exported program (UDTs+tags+blocks) → ImportPlcProgramFromDirectory; JSON-built blocks → PlcBuildAndImport.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "groupPath": {
+     "description": "groupPath: defines the path in the project structure to the group, where to import the block",
+     "type": "string"
+    },
+    "importPath": {
+     "description": "importPath: defines the path of the xml file from where to import the block",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "groupPath",
+    "importPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "AddDeviceWithFallback",
+  "description": "[L1][Hardware] PREFERRED for natural-language device insertion. Adds a Siemens hardware device by probing the installed TIA catalog with fallback versions. Requires: Connect + OpenProject. Example: 'add CPU 1211C AC/DC/RLY' → family='S7-1200'. Families: S7-1200, S7-1500, WinCCUnifiedPC. For third-party/GSD devices use AddGsdDeviceWithProbe.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "preferredMlfb": {
+     "description": "preferredMlfb: preferred MLFB/order number, e.g. '6ES7211-1BE40-0XB0'; empty uses family fallback list",
+     "type": "string"
+    },
+    "preferredVersion": {
+     "description": "preferredVersion: preferred catalog version, e.g. 'V4.7'; empty probes known/default versions",
+     "type": "string"
+    },
+    "deviceName": {
+     "description": "deviceName: name in project tree",
+     "type": "string"
+    },
+    "family": {
+     "description": "family: fallback hint, e.g. 'S7-1200', 'S7-1500', or 'WinCCUnifiedPC'",
+     "type": "string",
+     "default": "S7-1500"
+    }
+   },
+   "required": [
+    "preferredMlfb",
+    "preferredVersion",
+    "deviceName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ConnectDeviceNodesToProfinetSubnet",
+  "description": "[L1][Hardware] PREFERRED for PROFINET network setup. Finds the first IE/PROFINET node under two devices, creates/reuses a subnet on the first, connects the second, and returns readback evidence. Requires: Connect + OpenProject + both devices added. Typical: firstRootPath='PLC_1', secondRootPath='HMI_KTP700_1/HMI_KTP700_1.IE_CP_1'. Verified for S7-1200 + KTP700 Basic PN.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "firstRootPath": {
+     "description": "firstRootPath: first device/device-item root, usually PLC root, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "secondRootPath": {
+     "description": "secondRootPath: second device/device-item root, e.g. 'HMI_KTP700_1/HMI_KTP700_1.IE_CP_1'",
+     "type": "string"
+    },
+    "subnetName": {
+     "description": "subnetName: subnet name to create when the first node is not already connected, e.g. 'PN_IE_1'",
+     "type": "string",
+     "default": "PN_IE_1"
+    }
+   },
+   "required": [
+    "firstRootPath",
+    "secondRootPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ExportAsDocuments",
+  "description": "[L2][PLC-Software] PREFERRED on V21+ for exporting one block. Exports a single program block to SIMATIC SD textual / SCL document format (.s7dcl + .s7res) — far more readable/diff-friendly than SimaticML XML (ExportBlock). Requires TIA Portal V20 or newer.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "blockPath": {
+     "description": "blockPath: defines the path in the project structure to the block",
+     "type": "string"
+    },
+    "exportPath": {
+     "description": "exportPath: defines the path where to export the documents",
+     "type": "string"
+    },
+    "preservePath": {
+     "description": "preservePath: preserves the path/structure of the plc software",
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "softwarePath",
+    "blockPath",
+    "exportPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "CompileAndDiagnosePlc",
+  "description": "[L1][PLC-Software] PREFERRED compile tool. Compiles PLC and returns structured errors/warnings by recursively walking CompilerResult.Messages (V20/V21 PublicAPI). Leaf diagnostics include Path + Description; optional Line/Column via GetAttribute when exposed. Requires: Connect + OpenProject.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: PLC software path, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "password": {
+     "description": "password: optional safety password",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "WritePlcSclSourceFile",
+  "description": "[L1][PLC-Software][Offline] Write SCL source text to a local .scl external-source file (UTF-8 WITH BOM, so Chinese comments are not imported as mojibake/乱码). This tool does NOT connect to TIA Portal and does NOT import anything — it only writes the file to disk and returns the path plus manual-import instructions. Use it as the robust fallback when XML block import is rejected (e.g. a TIA V20 portal rejecting V21 SimaticML tokens: 'Cannot create SW.Blocks.CompileUnit... token not supported'): the user imports the .scl manually in TIA via project tree → 'External source files' → 'Add new external file', then right-clicks the source → 'Generate blocks from source'. The sclContent must be a complete source, e.g. FUNCTION_BLOCK \"Name\" ... END_FUNCTION_BLOCK.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "sclContent": {
+     "description": "sclContent: the full SCL source text (complete FUNCTION_BLOCK / FUNCTION / DATA_BLOCK / TYPE declarations). This is written verbatim.",
+     "type": "string"
+    },
+    "outputPath": {
+     "description": "outputPath: target .scl file path. If a directory is given (or the path has no extension), the file is named after the first block found in the source. Empty means a temp file under %TEMP%\\tia_mcp_scl.",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "sclContent"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DescribeBlockLogic",
+  "description": "[L1][PLC-Software] Read a block's LOGIC as READABLE TEXT — the fast, accurate way to analyze LADDER (LAD) without hand-parsing FlgNet XML. For each LAD network it reconstructs the power flow as a boolean-ish expression (series = ' · ', parallel = ' + '), shows coils ( )/(S)/(R), MOVE/compare/timer boxes with their operands, and — critically — FLAGS any contact whose operand is a LITERAL CONSTANT with '⟨常量⟩' (a normally-open contact wired to FALSE silently disables its whole rung; this is nearly impossible to spot by eye). SCL/STL networks are rendered inline as code. Use this to understand or review LAD logic before editing. Requires: Connect + OpenProject + the block consistent (compile first if IsConsistent=false; export does not work in online mode — GoOffline first). blockPath must be fully qualified 'Group/Subgroup/Name' from GetSoftwareTree.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: PLC software path, e.g. '5T车' or 'PLC_1' (from GetProjectTree)",
+     "type": "string"
+    },
+    "blockPath": {
+     "description": "blockPath: fully qualified 'Group/Subgroup/Name' from GetSoftwareTree",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "blockPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "ExportBlocksAsDocuments",
+  "description": "[L2][PLC-Software] PREFERRED on V21+ for batch export. Exports multiple program blocks to SIMATIC SD textual / SCL document format (.s7dcl + .s7res) — far more readable/diff-friendly than SimaticML XML. Requires TIA Portal V20 or newer.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "exportPath": {
+     "description": "exportPath: defines the path where to export the documents",
+     "type": "string"
+    },
+    "regexName": {
+     "description": "regexName: defines the name or regular expression to find the block. Use empty string (default) to find all",
+     "type": "string",
+     "default": ""
+    },
+    "preservePath": {
+     "description": "preservePath: preserves the path/structure of the plc software",
+     "type": "boolean",
+     "default": false
+    },
+    "softwareUnit": {
+     "description": "softwareUnit: export only this software unit's blocks; empty = PLC root",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "softwarePath",
+    "exportPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ListExports",
+  "description": "[L1][Exports] List the export handles currently held by this engine session — id, the tool that produced each one, its target, age, and total size. Use it when you have lost an exportId, or to check what is still available before paging.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "tool": {
+     "description": "tool: optional filter, matches part of the producing tool's name",
+     "type": "string",
+     "default": null
+    },
+    "limit": {
+     "description": "limit: maximum handles to return",
+     "type": "integer",
+     "default": 20
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "AttachToOpenProject",
+  "description": "[L1][Project]Attach MCP to an already-open TIA Portal project by name (avoids disposed project handles).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "projectName": {
+     "description": "projectName: name shown in TIA (e.g. '项目1')",
+     "type": "string"
+    }
+   },
+   "required": [
+    "projectName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "GetSoftwareInfo",
+  "description": "[L1][PLC-Software] Get PLC software properties (language, version, block counts). Requires: Connect + OpenProject. softwarePath comes from GetProjectTree (e.g. 'PLC_1'). Use GetSoftwareTree for the full block hierarchy.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "SaveExport",
+  "description": "[L1][Exports] Write a parked response to a file in one step, instead of paging it through the conversation. Prefer this whenever the user wants the whole thing (a full cross-reference dump, a whole block list, a whole block export): it costs one call and no context. By default the tool's PAYLOAD is written (e.g. the CSV itself), not the JSON envelope around it — so saving a truncated table to 'IO.csv' really gives you a CSV you can open in Excel. Pass raw=true to write the untouched response text instead. Written as UTF-8 with BOM so Chinese opens correctly in Notepad and Excel.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "exportId": {
+     "description": "exportId: the handle from a truncated response",
+     "type": "string"
+    },
+    "outputPath": {
+     "description": "outputPath: full file path to write, e.g. 'C:\\\\Temp\\\\IO表.csv'",
+     "type": "string"
+    },
+    "raw": {
+     "description": "raw: true = write the response text verbatim (JSON envelope included). Default false = write just the payload.",
+     "type": "boolean",
+     "default": false
+    },
+    "overwrite": {
+     "description": "overwrite: DEFAULT false — if the file already exists the call is REFUSED rather than replacing it. Pass true only after the user agreed to overwrite that specific file.",
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "exportId",
+    "outputPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "Bootstrap",
+  "description": "[L0][Bootstrap] FIRST tool any AI model should call. Read-only single-call orientation: returns TIA version, Openness group status, current connection/project state, the recommended next tool, the L0/L1 tool roster, and known TIA Openness limitations. Does NOT connect to TIA Portal — call Connect afterwards based on RecommendedNextTool.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ImportPlcTagTable",
+  "description": "[L1][PLC-Software]Import one PLC tag table XML file into PLC software (best-effort)",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path in the project structure to the PLC software",
+     "type": "string"
+    },
+    "folderPath": {
+     "description": "folderPath: optional tag table group path (use empty for root)",
+     "type": "string"
+    },
+    "importPath": {
+     "description": "importPath: full file path of PLC tag table XML",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "folderPath",
+    "importPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DeleteDevice",
+  "description": "[L2][Hardware][Destructive] Preview or delete ONE device / station (PLC, HMI, IO device, drive). Defaults to dryRun=true = lists the device, its modules and software (block count), deletes nothing. Give the device name or its CPU/head-module name; a module name is refused. DANGER: deleting a PLC deletes its whole program; network, IO-system, S7 and HMI connections to it are cut. Verified after delete; then SaveProject.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "devicePath": {
+     "description": "device (station) name as listed by GetDevices, or its CPU name, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "dryRun": {
+     "description": "true (default) only previews; false deletes and verifies",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "devicePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "CreateProject",
+  "description": "[L1][Project] Create a new empty TIA Portal project. Requires: Connect. After creation, call AddDevice to add PLCs/HMIs, then GetProjectTree to verify. The project is automatically opened after creation — no separate OpenProject call needed.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "directoryPath": {
+     "description": "directoryPath: folder where project will be created",
+     "type": "string"
+    },
+    "projectName": {
+     "description": "projectName: project name",
+     "type": "string"
+    },
+    "closeForeignProject": {
+     "description": "closeForeignProject: DEFAULT false. If TIA already has a project open that this session did not open, the call is REFUSED rather than closing the user's work. Only pass true after the user has agreed to close it.",
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "directoryPath",
+    "projectName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DeletePlcWatchTable",
+  "description": "[L2][PLC-Software][Destructive] Preview or delete ONE watch table. Defaults to dryRun=true (path and entry count). Affects commissioning only, not the program - but entries, modify values and comments are lost (ExportPlcWatchTable first). Verified after delete; then SaveProject.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "PLC software path, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "watchTableName": {
+     "description": "bare name or group-qualified path",
+     "type": "string"
+    },
+    "dryRun": {
+     "description": "true (default) only previews; false deletes and verifies",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "softwarePath",
+    "watchTableName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DownloadToPlc",
+  "description": "[L1][Category:PLC-Online][ONLINE-WRITE][PreCondition:Connect+OpenProject+CompileSoftware+CheckDownloadReadiness] Download the compiled PLC program to the physical CPU over the network. The CPU will stop briefly during download and restart automatically (controlled by startAfterDownload). SAFETY: Verify no personnel are near the machine before downloading. This changes live PLC behavior. Workflow: Connect → OpenProject → CompileSoftware → CheckDownloadReadiness → DownloadToPlc → GetOnlineState. On success State=Success or Warning. On Error check Errors[] for details. Default options (keepActualValues=true, consistentBlocksOnly=true) are safe for most scenarios. Set keepActualValues=false only when DB initial values must be reset — this is irreversible. On a multi-NIC PC the PG/PC interface is picked automatically (the adapter sharing a subnet with the CPU); Meta.pgPcRoute reports which one was used. Override with pgPcInterface / targetIpAddress when the pick is wrong. Meta.downloadPrompts lists every question TIA asked during the download and how it was answered. If test or commissioning functions are active on the CPU the download stops instead of cancelling them; pass abortActiveTests=true only after the user confirms nobody is using them.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path to the PLC software, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "consistentBlocksOnly": {
+     "description": "consistentBlocksOnly: true=download only consistent blocks (safe default), false=download all blocks even inconsistent ones",
+     "type": "boolean",
+     "default": true
+    },
+    "keepActualValues": {
+     "description": "keepActualValues: true=preserve current DB actual values (safe default), false=reset all DB values to initial values (irreversible)",
+     "type": "boolean",
+     "default": true
+    },
+    "startAfterDownload": {
+     "description": "startAfterDownload: true=automatically set CPU to RUN after download (default), false=leave CPU in STOP",
+     "type": "boolean",
+     "default": true
+    },
+    "stopBeforeDownload": {
+     "description": "stopBeforeDownload: true=automatically stop CPU before download (required for most downloads), false=attempt online download without stopping",
+     "type": "boolean",
+     "default": true
+    },
+    "password": {
+     "description": "password: optional CPU access password. Required when the CPU has download protection configured. Leave empty for unprotected CPUs.",
+     "type": "string",
+     "default": ""
+    },
+    "pgPcInterface": {
+     "description": "pgPcInterface: optional PG/PC interface name (substring, case-insensitive), e.g. 'PLCSIM' or 'Realtek'. Leave empty to auto-pick the adapter that shares a subnet with the CPU. Run CheckDownloadReadiness to see the available names.",
+     "type": "string",
+     "default": ""
+    },
+    "targetIpAddress": {
+     "description": "targetIpAddress: optional CPU IP to download to, e.g. '192.168.0.1'. Disambiguates which route to use when the project has several CPU interfaces. Leave empty to auto-pick.",
+     "type": "string",
+     "default": ""
+    },
+    "abortActiveTests": {
+     "description": "abortActiveTests: DEFAULT false. When test/commissioning functions are active on the CPU, TIA asks whether to cancel them; false answers 'no action' and the download stops. true cancels them - ask the user first, somebody may be commissioning the machine.",
+     "type": "boolean",
+     "default": false
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": true,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "CompileAndDiagnoseHmi",
+  "description": "[L1][HMI] Compile an HMI and return structured errors/warnings, the HMI counterpart of CompileAndDiagnosePlc. Use it after generating screens/tags so you can read the diagnostics and fix them yourself instead of asking the engineer to compile in the TIA UI. WinCC Unified: HmiSoftware is not compilable on its own, so the owning device is compiled (same as the TIA UI does) and hardware diagnostics may appear alongside screen ones. Classic (Comfort/KTP): the HMI software itself is compiled. Requires: Connect + OpenProject. softwarePath from GetProjectTree, e.g. 'HMI_RT_1'.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: HMI software path, e.g. 'HMI_RT_1'",
+     "type": "string"
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "DeletePlcTag",
+  "description": "[L2][PLC-Software][Destructive] Preview or delete ONE PLC tag. Defaults to dryRun=true (shows name/type/address/comment). DANGER: code using the symbol falls back to the absolute address or stops compiling, HMI bindings by name break silently, the comment is lost. Verified after delete; then CompileAndDiagnosePlc + SaveProject.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "PLC software path, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "tagName": {
+     "description": "exact tag name",
+     "type": "string"
+    },
+    "tagTableName": {
+     "description": "optional table to disambiguate",
+     "type": "string",
+     "default": ""
+    },
+    "dryRun": {
+     "description": "true (default) previews; false deletes and verifies",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "softwarePath",
+    "tagName"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ValidateAutomationContext",
+  "description": "[L1][Diagnostics]Preflight current project for automation: devices, software, expected PLC/HMI paths, and project tree.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "expectedPlcSoftwarePath": {
+     "description": "expectedPlcSoftwarePath: expected PLC software path, empty to skip",
+     "type": "string",
+     "default": "PLC_1"
+    },
+    "expectedHmiSoftwarePath": {
+     "description": "expectedHmiSoftwarePath: expected HMI software path, empty to skip",
+     "type": "string",
+     "default": "HMI_RT_1"
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "GenerateAcceptanceReport",
+  "description": "[L0][Reports]Generate a read-only acceptance report for the current MCP/TIA environment. The default mode does not attach to TIA or write to the project; it writes Markdown/JSON report files to outputDirectory.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "outputDirectory": {
+     "description": "Directory where the Markdown and JSON reports will be written. Empty means a temp directory under %TEMP%.",
+     "type": "string",
+     "default": ""
+    },
+    "connectIfNeeded": {
+     "description": "When true, call Connect during self-test if the server is not connected. This may attach to TIA Portal.",
+     "type": "boolean",
+     "default": false
+    },
+    "includeProjectTree": {
+     "description": "When true, include project tree output if a project is open.",
+     "type": "boolean",
+     "default": false
+    },
+    "inspectPortalProcesses": {
+     "description": "When true, enumerate TIA process/project details. This may be slow if TIA is contended.",
+     "type": "boolean",
+     "default": false
+    },
+    "title": {
+     "description": "Optional report title.",
+     "type": "string",
+     "default": "TIA MCP Acceptance Report"
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ImportBlocksFromDocuments",
+  "description": "[L2][PLC-Software] PREFERRED on V21+ for batch import. Imports multiple program blocks from SIMATIC SD textual / SCL documents (.s7dcl + .s7res) into PLC software. Requires TIA Portal V20 or newer.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "groupPath": {
+     "description": "groupPath: optional path within the PLC program where the blocks should be placed (empty for root)",
+     "type": "string"
+    },
+    "importPath": {
+     "description": "importPath: directory containing the document files (.s7dcl/.s7res)",
+     "type": "string"
+    },
+    "regexName": {
+     "description": "regexName: name or regular expression to select block files (empty for all)",
+     "type": "string",
+     "default": ""
+    },
+    "importOption": {
+     "description": "importOption: ImportDocumentOptions value (None, Override, SkipInactiveCultures, ActivateInactiveCultures)",
+     "type": "string",
+     "default": "Override"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "groupPath",
+    "importPath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "PlcBuildAndImport",
+  "description": "[L1][PLC-Software] MAIN tool for creating new PLC blocks from natural language. Build one PLC artifact (UDT/tag table/GlobalDB/FC/FB) from structured JSON, then optionally import and compile. Use dryRun=true first to validate. Workflow: describe block in JSON → dryRun → review → dryRun=false to import. Replaces the multi-step Build*Xml + ImportBlock sequence.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: PLC software path, e.g. 'PLC_1'. Required only when dryRun=false.",
+     "type": "string"
+    },
+    "kind": {
+     "description": "kind: udt|tagtable|globaldb|fc|fb",
+     "type": "string"
+    },
+    "json": {
+     "description": "json: structured JSON matching the corresponding BuildPlc* tool.",
+     "type": "string"
+    },
+    "typeGroupPath": {
+     "description": "typeGroupPath: PLC data type group path for kind=udt.",
+     "type": "string",
+     "default": ""
+    },
+    "tagFolderPath": {
+     "description": "tagFolderPath: PLC tag table group path for kind=tagtable.",
+     "type": "string",
+     "default": ""
+    },
+    "blockGroupPath": {
+     "description": "blockGroupPath: PLC block group path for kind=globaldb|fc.",
+     "type": "string",
+     "default": ""
+    },
+    "compileAfter": {
+     "description": "compileAfter: compile PLC after import when dryRun=false.",
+     "type": "boolean",
+     "default": true
+    },
+    "dryRun": {
+     "description": "dryRun: true builds XML and returns the import plan without importing/compiling.",
+     "type": "boolean",
+     "default": true
+    }
+   },
+   "required": [
+    "softwarePath",
+    "kind",
+    "json"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "SetWatchTableModifyValue",
+  "description": "[L2][Category:PLC-Online][ONLINE-WRITE][PreCondition:Connect+OpenProject+GoOnline] Configure a watch table entry to write a value to a PLC variable once (or on a trigger). This is an OFFLINE CONFIGURATION step — the value is written to the PLC only when TIA Portal is online and the trigger fires. Trigger options: Permanent (every cycle), PermanentAtStart (every cycle, at scan start), OnceOnlyAtStart (single write at scan start), PermanentAtEnd, OnceOnlyAtEnd, OnceOnlyAtStop. Use GoOnline before calling this for the write to reach the PLC. SAFETY: the target is a variable in the physical CPU, not a simulation. The moment the trigger fires the value lands on the real address — if that address is a coil, a valve, a contactor or a drive enable, the machine moves at that instant, with no acknowledgement step. Before calling, know exactly what the address drives and confirm nobody is at or inside the machine. The resulting physical motion is NOT undone by calling this tool again with another value; the equipment stays wherever it moved to. Not a Force: this writes the value once per trigger event and the variable then follows PLC logic again (a force would keep overriding the program continuously). This server exposes no tool for force entries — GetPlcForceTables only lists them; use TIA Portal directly to force a value. Example: SetWatchTableModifyValue('PLC_1', 'Debug_WT', 'DB1.DBX0.0', 'TRUE', 'OnceOnlyAtStart')",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: path to the PLC software, e.g. 'PLC_1'",
+     "type": "string"
+    },
+    "tableName": {
+     "description": "tableName: name of the watch table to configure (created if not existing)",
+     "type": "string"
+    },
+    "address": {
+     "description": "address: variable address, e.g. 'DB1.DBX0.0', '%M0.0', 'MyTag'",
+     "type": "string"
+    },
+    "modifyValue": {
+     "description": "modifyValue: value to write, e.g. 'TRUE', '42', '3.14'",
+     "type": "string"
+    },
+    "trigger": {
+     "description": "trigger: when to apply the write — Permanent | PermanentAtStart | OnceOnlyAtStart | PermanentAtEnd | OnceOnlyAtEnd | OnceOnlyAtStop (default: Permanent)",
+     "type": "string",
+     "default": "Permanent"
+    }
+   },
+   "required": [
+    "softwarePath",
+    "tableName",
+    "address",
+    "modifyValue"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "CallTool",
+  "description": "[L0][Meta] Invoke a tool from the full roster by name, including ones not listed in this session. Use FindTools first to get the exact name and parameter signature. Returns exactly what calling the tool directly returns, and unknown argument names are rejected before anything runs. Tools that download to a CPU, go online, write watch tables or delete blocks/types/tag tables/external sources are refused here: call those by their own name so the user sees what will run. Example: name='ExportPlcWatchTable', argumentsJson='{\"softwarePath\":\"PLC_1\",\"watchTableName\":\"WT1\"}'.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "description": "name: exact tool name from FindTools, e.g. 'ExportPlcWatchTable'.",
+     "type": "string"
+    },
+    "argumentsJson": {
+     "description": "argumentsJson: JSON object of the tool's arguments, e.g. '{\"softwarePath\":\"PLC_1\"}'. Omit or '{}' for a no-argument tool.",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "name"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ClearExports",
+  "description": "[L1][Exports] Drop parked responses in bulk. NOTE: handles already expire on their own at 24h, so the default olderThanHours=24 almost always deletes nothing — pass olderThanHours=0 to actually free the store now.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "olderThanHours": {
+     "description": "olderThanHours: drop handles at least this old; 0 drops every handle",
+     "type": "integer",
+     "default": 24
+    }
+   }
+  },
+  "annotations": {
+   "destructiveHint": true,
+   "idempotentHint": false,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ },
+ {
+  "name": "ListPortalProcessProjects",
+  "description": "[L1][Portal]List running TIA Portal processes and the projects/sessions visible in each process.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {}
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "CompileSoftware",
+  "description": "[L1][PLC-Software] Compile all blocks in the PLC software. Requires: Connect + OpenProject. Returns basic success/failure. For structured error/warning details use CompileAndDiagnosePlc instead. Must compile before ExportBlock if any blocks are inconsistent. After adding new blocks via import, always compile to catch type/interface mismatches.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "softwarePath": {
+     "description": "softwarePath: defines the path in the project structure to the plc software",
+     "type": "string"
+    },
+    "password": {
+     "description": "password: the password to access adminsitration, default: no password",
+     "type": "string",
+     "default": ""
+    }
+   },
+   "required": [
+    "softwarePath"
+   ]
+  },
+  "annotations": {
+   "destructiveHint": false,
+   "idempotentHint": true,
+   "openWorldHint": false,
+   "readOnlyHint": false
+  }
+ }
+]
