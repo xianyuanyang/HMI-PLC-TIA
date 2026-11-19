@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>博图操作面板 · TIA Portal 本地直连</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#1c2430; --muted:#6b7787;
+    --line:#dde3ea; --brand:#1565c0; --brand-soft:#e8f1fb;
+    --ok:#1b7a3d; --ok-soft:#e7f5ec; --warn:#a35b00; --warn-soft:#fdf1de;
+    --danger:#b3261e; --danger-soft:#fdecea; --mono:"Consolas","Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Microsoft YaHei","Segoe UI",sans-serif}
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  .badge{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--warn-soft);color:var(--warn);border:1px solid #f0d9a8}
+  .badge.on{background:var(--ok-soft);color:var(--ok);border-color:#bfe3cd}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:6px}
+  .badge.on .dot{background:var(--ok)}
+  header .spacer{flex:1}
+  header .meta{font-size:12px;color:var(--muted)}
+  .wrap{max-width:1180px;margin:18px auto;padding:0 18px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .card.full{grid-column:1/-1}
+  .card h2{font-size:14px;margin:0 0 12px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card h2 .n{display:inline-flex;width:20px;height:20px;border-radius:6px;background:var(--brand-soft);color:var(--brand);align-items:center;justify-content:center;font-size:12px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:13px var(--mono);background:#fbfcfe;color:var(--ink)}
+  textarea{min-height:64px;resize:vertical}
+  .row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+  .row>*{flex:1;min-width:130px}
+  .row .fix{flex:0 0 auto}
+  button{border:1px solid var(--brand);background:var(--brand);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500}
+  button:hover{filter:brightness(1.06)}
+  button.ghost{background:#fff;color:var(--brand)}
+  button.gray{background:#fff;color:var(--ink);border-color:var(--line)}
+  button.danger{background:var(--danger);border-color:var(--danger)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px}
+  .out{background:#0f1720;color:#cfe3f7;border-radius:8px;padding:12px;font:12px/1.5 var(--mono);white-space:pre-wrap;word-break:break-all;max-height:260px;overflow:auto;margin-top:12px;min-height:44px}
+  .out .k{color:#7fd1a8}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:10px}
+  .toggle input{width:auto}
+  .live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .live-item{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fbfcfe}
+  .live-item .name{font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .live-item .val{font:600 18px var(--mono);color:var(--brand);margin-top:4px}
+  .gov{background:var(--danger-soft);border:1px solid #f3c9c4;border-radius:10px;padding:12px 14px;margin-top:12px}
+  .gov label{color:var(--danger);font-weight:600;margin:0}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left}
+  th{color:var(--muted);font-weight:500;font-size:12px}
+  td code{font:12px var(--mono);color:var(--brand)}
+  .pill{font-size:11px;padding:2px 8px;border-radius:12px;background:var(--ok-soft);color:var(--ok)}
+  .pill.x{background:var(--danger-soft);color:var(--danger)}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+  .spin{animation:sp 1s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>博图操作面板</h1>
+  <span class="badge" id="statusBadge"><span class="dot"></span>未连接引擎</span>
+  <span class="spacer"></span>
+  <span class="meta" id="metaText">工程: — ｜ IP: —</span>
+  <button class="gray" id="btnStatus">刷新状态</button>
+</header>
+
+<div class="wrap">
+
+  <!-- 会话 -->
+  <section class="card">
+    <h2><span class="n">1</span>会话与连接</h2>
+    <label>工程名（在 TIA 里先打开工程；留空则只查询当前工程）</label>
+    <input id="projectName" placeholder="例如 LWF_20260612_V21" value="LWF_20260612_V21">
+    <label>PLC IP（在线监视用）</label>
+    <input id="plcIp" value="192.168.0.1">
+    <div class="btns">
+      <button id="btnConnect">连接博图</button>
+      <button class="ghost" id="btnReset">重置引擎</button>
+    </div>
+    <div class="out" id="outConnect">—</div>
+    <div class="hint">首次连接若 TIA 未打开，引擎会尝试启动（可能弹 UAC）。建议先手动打开 TIA V21 再连。</div>
+  </section>
+
+  <!-- 浏览/块操作 -->
+  <section class="card">
+    <h2><span class="n">2</span>浏览与块操作（只读为主）</h2>
+    <label>常用只读工具（点击即执行）</label>
+    <div class="btns">
+      <button class="gray tool-quick" data-tool="GetState">GetState</button>
+      <button class="gray tool-quick" data-tool="GetProject">GetProject</button>
+      <button class="gray tool-quick" data-tool="GetProjectTree">GetProjectTree</button>
+      <button class="gray tool-quick" data-tool="GetDevices">GetDevices</button>
+    </div>
+    <label>任意工具名（走 CallTool 元调用，覆盖全部工具）</label>
+    <input id="toolName" placeholder="例如 GetBlockInfo / ExportAsDocuments / CompileAndDiagnosePlc" value="GetBlockInfo">
+    <label>参数 JSON</label>
+    <textarea id="toolArgs" spellcheck="false">{"softwarePath":"PLC_1","blockPath":"程序块/LossInWeightControl"}</textarea>
+    <div class="btns">
+      <button id="btnCall">执行工具</button>
+      <button class="gray" id="btnListTools">列出全部工具</button>
+    </div>
+    <div class="out" id="outTool">—</div>
+  </section>
+
+  <!-- 在线监视 -->
+  <section class="card full">
+    <h2><span class="n">3</span>在线监视 · 实时值自动轮询（S7 只读，不写 PLC）</h2>
+    <label>变量地址（逗号分隔，格式见下方示例；修改后点"应用列表"）</label>
+    <div class="row">
+      <input id="liveItems" value="DB1.DBD26:REAL,DB1.DBD86:REAL,DB1.DBD82:REAL,DB1.DBD224:REAL,DB1.DBW106,QW96">
+      <div class="fix"><button class="ghost" id="btnApplyItems">应用列表</button></div>
+    </div>
+    <div class="toggle"><input type="checkbox" id="autoPoll"><label for="autoPoll" style="margin:0">开启自动轮询（每 1.5 秒读一次）</label></div>
+    <div class="btns">
+      <button id="btnReadOnce">读一次</button>
+      <span class="hint" id="pollInfo" style="margin:0;align-self:center">轮询关闭</span>
+    </div>
+    <div class="live-grid" id="liveGrid"></div>
+    <div class="out" id="outLive">—</div>
+    <div class="hint">
+      示例：<code>DB1.DBD26:REAL</code> 设定流量 ｜ <code>DB1.DBD86:REAL</code> 实际流量 ｜
+      <code>DB1.DBD82:REAL</code> 输出转速 ｜ <code>DB1.DB W106</code> PID状态 ｜ <code>QW96</code> 物理输出 ｜ <code>MW0</code> 位存储区。<br>
+      地址须先在《DB1地址速查表》里校准；换工程必须重新标定，不能照抄。
+    </div>
+  </section>
+
+  <!-- 受控写入 -->
+  <section class="card full">
+    <h2><span class="n">4</span>受控写入与下载（危险区 · 默认禁用）</h2>
+    <div class="gov">
+      <label><input type="checkbox" id="govCheck"> 我确认现场安全，了解下载会使 CPU 短暂停机、写值会影响运行中的设备</label>
+      <div class="hint" style="color:var(--danger)">未勾选时，后端会拦截所有下载/写值/在线切换工具。请谨慎。</div>
+    </div>
+    <label>下载参数（DownloadToPlc）</label>
+    <div class="row">
+      <div><label>softwarePath</label><input id="dlSw" value="PLC_1"></div>
+      <div><label>保留实际值</label><select id="dlKeep"><option value="true">是 (true)</option><option value="false">否</option></select></div>
+      <div><label>下载后启动</label><select id="dlStart"><option value="false">否,保持STOP (false)</option><option value="true">是</option></select></div>
+    </div>
+    <div class="btns">
+      <button class="danger" id="btnDownload" disabled>下载到 PLC</button>
+      <button class="gray" id="btnSave" disabled>保存工程 (SaveProject)</button>
+      <button class="gray" id="btnCompile" disabled>编译 PLC (CompileAndDiagnosePlc)</button>
+    </div>
+    <div class="out" id="outDanger">—</div>
+  </section>
+
+</div>
+
+<footer>本地桥接面板 · 数据不经云端 · 引擎与工程均在本机 ｜ 危险操作受后端二次授权闸管控</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const API = '';
+let pollTimer = null;
+
+async function post(path, body){
+  const r = await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  return await r.json();
+}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function show(el,obj){
+  let t = typeof obj==='string'?obj:JSON.stringify(obj,null,2);
+  el.innerHTML = esc(t);
+}
+
+function setStatus(on, text){
+  const b=$('statusBadge');
+  b.className='badge'+(on?' on':'');
+  b.innerHTML='<span class="dot"></span>'+(text||(on?'引擎就绪':'未连接引擎'));
+}
+
+async function refreshStatus(){
+  try{
+    const r=await (await fetch(API+'/api/status')).json();
+    setStatus(r.engine_exists, r.engine_exists?('引擎就绪'+(r.client_alive?' · 已连接':'')):'引擎缺失');
+    $('metaText').textContent='工程: '+(r.state?.project||'—')+' ｜ IP: '+(r.state?.ip||'—');
+  }catch(e){setStatus(false,'服务未启动');}
+}
+
+$('btnStatus').onclick=refreshStatus;
+$('btnConnect').onclick=async()=>{
+  $('outConnect').textContent='连接中…';
+  const r=await post('/api/connect',{projectName:$('projectName').value.trim(),ip:$('plcIp').value.trim()});
+  show($('outConnect'),r);
+  refreshStatus();
+};
+$('btnReset').onclick=async()=>{
+  const r=await post('/api/reset',{}); show($('outConnect'),r); refreshStatus();
+};
+
+document.querySelectorAll('.tool-quick').forEach(b=>{
+  b.onclick=async()=>{
+    $('outTool').textContent='执行 '+b.dataset.tool+' …';
+    const r=await post('/api/call',{tool:b.dataset.tool,args:{},viaMeta:true});
+    show($('outTool'),r);
+  };
+});
+$('btnCall').onclick=async()=>{
+  let args={};
+  try{args=JSON.parse($('toolArgs').value||'{}');}catch(e){show($('outTool'),{error:'参数 JSON 解析失败: '+e.message});return;}
+  $('outTool').textContent='执行 '+$('toolName').value+' …';
+  const r=await post('/api/call',{tool:$('toolName').value.trim(),args,viaMeta:true,
+    authorized:$('govCheck').checked});
+  show($('outTool'),r);
+};
+$('btnListTools').onclick=async()=>{
+  $('outTool').textContent='读取工具列表…';
+  const r=await post('/api/call',{tool:'FindTools',args:{query:'',limit:300},viaMeta:true});
+  show($('outTool'),r);
+};
+
+let liveItems=[];
+function applyItems(){
+  liveItems=$('liveItems').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean);
+  $('liveGrid').innerHTML=liveItems.map(it=>'<div class="live-item"><div class="name">'+esc(it)+'</div><div class="val" id="lv_'+esc(it).replace(/[^\w]/g,'_')+'">—</div></div>').join('');
+}
+$('btnApplyItems').onclick=applyItems;
+
+function parseLive(text){
+  // 引擎返回形如 "DBD26=5.0, DBD86=0.044 ..." 或 JSON; 尽力提取数值展示
+  const out={};
+  try{
+    const j=JSON.parse(text);
+    if(j && typeof j==='object'){
+      for(const k of Object.keys(j)) if(typeof j[k]!=='object') out[k]=j[k];
+      return out;
+    }
+  }catch(e){}
+  const re=/([A-Za-z0-9_.]+)\s*[:=]\s*(-?[\d.eE+]+)/g;
+  let m; while((m=re.exec(text||''))) out[m[1]]=m[2];
+  return out;
+}
+async function readLive(){
+  const r=await post('/api/live',{items:liveItems,ip:$('plcIp').value.trim()});
+  if(!r.ok){ show($('outLive'),r); return; }
+  const vals=parseLive(r.text||'');
+  liveItems.forEach((it,i)=>{
+    const el=$('lv_'+it.replace(/[^\w]/g,'_'));
+    if(!el) return;
+    const key=it.replace(/^DB\d+\./,'').replace(/:.*$/,'');
+    el.textContent = vals[it] ?? vals[key] ?? vals['DBD'+(i)] ?? '·';
+  });
+  show($('outLive'),r.text||r);
+  $('pollInfo').textContent='最后读取: '+new Date().toLocaleTimeString();
+}
+$('btnReadOnce').onclick=readLive;
+$('autoPoll').onchange=e=>{
+  if(e.target.checked){ applyItems(); readLive(); pollTimer=setInterval(readLive,1500); $('pollInfo').textContent='轮询中…'; }
+  else{ clearInterval(pollTimer); pollTimer=null; $('pollInfo').textContent='轮询关闭'; }
+};
+
+$('govCheck').onchange=e=>{
+  const on=e.target.checked;
+  ['btnDownload','btnSave','btnCompile'].forEach(id=>$(id).disabled=!on);
+};
+$('btnDownload').onclick=async()=>{
+  const args={softwarePath:$('dlSw').value.trim(),
+    keepActualValues:$('dlKeep').value==='true',
+    consistentBlocksOnly:true,
+    startAfterDownload:$('dlStart').value==='true',
+    stopBeforeDownload:true};
+  $('outDanger').textContent='下载中，CPU 将短暂停机…';
+  const r=await post('/api/call',{tool:'DownloadToPlc',args,viaMeta:true,authorized:true,timeout:300});
+  show($('outDanger'),r);
+};
+$('btnSave').onclick=async()=>{
+  const r=await post('/api/call',{tool:'SaveProject',args:{},viaMeta:true,authorized:true});
+  show($('outDanger'),r);
+};
+$('btnCompile').onclick=async()=>{
+  const r=await post('/api/call',{tool:'CompileAndDiagnosePlc',args:{softwarePath:$('dlSw').value.trim()},viaMeta:true,authorized:true,timeout:300});
+  show($('outDanger'),r);
+};
+
+applyItems();
+refreshStatus();
+</script>
+</body>
+</html>
